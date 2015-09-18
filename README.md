@@ -1,0 +1,168 @@
+# docker-compose-mixer
+Script which allow to run docker-compose with several docker-compose.yml files
+
+## Installation
+
+Download file and run it as console command `./dc-mixer.py`
+
+## Internal flow
+
+* get containers definitions
+* change services names
+* remove ignored services (all from `ignores` section of config)
+* resolve paths
+* resolving services names conflicts and remove links to ignored services
+* resolving ports conflicts
+* apply `overrides`
+* add master services
+
+
+## Configuration and syntax
+
+By default Mixer uses file in the same directory with name `docker-compose-mixer.yml`
+
+
+### Includes
+
+```yaml
+includes:
+  proja: projectA/docker-compose.yml
+  projb: projectB/docker-compose.yml
+...
+```
+
+Based on this configuration  all services from `projectA` in result file will change names and will have prefix `proja`
+That means prefixes should contain only allowed symbols according docker-compose syntax.
+
+If `projectA/docker-compose.yml` contains code:
+
+```yaml
+mysql:
+  image: mysql:latest
+
+pgsql:
+  image: postgres:latest
+
+php:
+  build: images/php
+  links:
+    - pgsql
+    - mysql:database
+  volumes_from:
+    - pgsql
+```
+
+...and `projectB/docker-compose.yml` contains code:
+
+```yaml
+pgsql:
+  build: images/pgsql
+```
+
+
+In result file you will see configuration:
+
+```yaml
+projamysql:
+  image: mysql:latest
+
+projapgsql:
+  image: postgres:latest
+
+projaphp:
+  build: projectA/images/php
+  links:
+    - projapgsql:pgsql
+    - projamysql:database
+  volumes_from:
+    - projapgsql
+
+projbpgsql:
+  build: projectB/images/pgsql
+```
+
+That means Mixer added prefix to services names and solved problems in names conflicts with using aliases.
+Resolving names conflicts is available for:
+
+* `links`
+* `volumes_from`
+* `container_name` (if only container name defined it will be changed with prefix after processing)
+
+Also in example above you can see that Mixer changed paths to build:
+Resolving paths is available for:
+
+* `build`
+* `volumes`
+* `env_file`
+* `extends`
+
+### Overrides
+
+```yaml
+...
+overrides:
+  projaphp:
+    ports:
+      80:80
+    links:
+      - projbpgsql:pgsql
+
+  projbphp:
+    ports:
+      81:80
+...
+```
+
+In section `overrides` you can define values to merge in result file.
+
+#### NOTES:
+* Ports you defined in overrides will be in result file without changes. Mixer will not try to solve conflicts in overrides.
+* To redefine values for paths (e.g. `build`, `voluems`) be sure paths will be related to `docker-compose-mixer.yml` file
+
+### Master services
+
+If you want to link services from two(or more) different `docker-compose.yml`, you have to define it in `overrides`
+or create another service where you will define links. In section `master_services` you must define normal
+
+```yaml
+...
+master_services:
+  php:
+    ports:
+      8080:80
+    links:
+      - projbpgsql:pgsql
+      - projamysql:mysql
+    volumes_from:
+      - projaphp
+```
+
+#### NOTES:
+* Any services in `master_services` section will be in result file *without any changes*.
+* You have to use names of services with prefixes because of... @see case above ;)
+
+### Ignores
+
+```yaml
+...
+ignores:
+  - projbpgsql
+```
+
+This section will remove services from result file and will check if any service linked with it and clean it as well.
+Cleaning available for same services where resolving names conflicts available.
+
+## Result
+
+File `docker-compose.yml` will be result of Mixer job.
+You can put that file in `.gitignore` if you will use Mixer every build.
+
+After run of Mixer you can work with `docker-compose.yml` file like you do with any docker-compose configurations.
+
+## Examples
+
+More examples you can find in [examples](./examples) directory.
+
+## Copyright
+
+* [Dmitriy Paunin](http://paunin.com) <d.m.paunin@gmail.com>
