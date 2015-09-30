@@ -1,0 +1,7 @@
+pgsql:
+  build: images/pgsql
+php:
+  build: php:54
+
+redis:
+  build: images/redis

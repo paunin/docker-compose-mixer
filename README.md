@@ -1,5 +1,6 @@
 # docker-compose-mixer
-Script which allow to run docker-compose with several docker-compose.yml files
+
+Package which allow to run docker-compose with several docker-compose.yml files
 
 ## Installation
 
@@ -103,13 +104,13 @@ Resolving paths is available for:
 overrides:
   projaphp:
     ports:
-      80:80
+      - 80:80
     links:
       - projbpgsql:pgsql
 
   projbphp:
     ports:
-      81:80
+      - 81:80
 ...
 ```
 
@@ -118,6 +119,8 @@ In section `overrides` you can define values to merge in result file.
 #### NOTES:
 * Ports you defined in overrides will be in result file without changes. Mixer will not try to solve conflicts in overrides.
 * To redefine values for paths (e.g. `build`, `voluems`) be sure paths will be related to `docker-compose-mixer.yml` file
+* If you want redefine attribute which should contain array, keep in mind:
+ **your array will be in result file without any merging to original value** (e.g. ports, links)
 
 ### Master services
 

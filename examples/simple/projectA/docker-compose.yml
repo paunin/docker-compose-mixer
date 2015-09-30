@@ -1,0 +1,13 @@
+mysql:
+  image: mysql:latest
+
+pgsql:
+  image: postgres:latest2
+
+php:
+  build: images/php
+  links:
+    - pgsql
+    - mysql:database
+  volumes_from:
+    - pgsql
