@@ -4,16 +4,17 @@ Package which allow to run docker-compose with several docker-compose.yml files
 
 ## Installation
 
-Download file and run it as console command `./dc-mixer.py`
+Download file and run it as console command `@TBD`
 
 ## Internal flow
 
 * get containers definitions
 * change services names
-* remove ignored services (all from `ignores` section of config)
+* resolving services names as atomic operation with:
+    * remove ignored services (all from `ignores` section of config)
+    * remove links to ignored services
 * resolve paths
-* resolving services names conflicts and remove links to ignored services
-* resolving ports conflicts
+* resolving ports conflicts (to avoid binding the same ports from different files)
 * apply `overrides`
 * add master services
 
@@ -88,6 +89,7 @@ Resolving names conflicts is available for:
 * `links`
 * `volumes_from`
 * `container_name` (if only container name defined it will be changed with prefix after processing)
+* `extends.service` (if only `extends.file` not defined)
 
 Also in example above you can see that Mixer changed paths to build:
 Resolving paths is available for:
@@ -143,6 +145,7 @@ master_services:
 #### NOTES:
 * Any services in `master_services` section will be in result file *without any changes*.
 * You have to use names of services with prefixes because of... @see case above ;)
+* Ports in  because
 
 ### Ignores
 
@@ -154,6 +157,8 @@ ignores:
 
 This section will remove services from result file and will check if any service linked with it and clean it as well.
 Cleaning available for same services where resolving names conflicts available.
+
+If services uses for `extend` directive, child service will be ignored as well
 
 ## Result
 

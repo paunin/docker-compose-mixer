@@ -16,7 +16,7 @@ overrides:
 master_services:
   php:
     ports:
-      - 8080:80
+      - 8001:80
     links:
       - projbpgsql:pgsql
       - projamysql:mysql
