@@ -62,7 +62,7 @@ class DcMixer(object):
             self.resolve_paths()
             self.resolve_ports()
             self.add_master_scope(mixer_config)
-            self.apply_overrides(mixer_config)
+            #self.apply_overrides(mixer_config)
             self.save_result_scope()
 
     def resolve_services_names(self):
