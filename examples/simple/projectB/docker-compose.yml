@@ -1,0 +1,18 @@
+pgsql:
+  build: images/pgsql
+php:
+  build: php:54
+redis:
+  build: /root/images/redis
+  container_name: pgsql
+  ports:
+    - "8001:9000"
+    - "8002:9001"
+
+pgsql2:
+  build: images/pgsql
+  extends:
+    service: pgsql
+  ports:
+    - "8001:9000"
+    - "8002:9001"

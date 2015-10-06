@@ -1,0 +1,28 @@
+includes:
+  proja: projectA/docker-compose.yml
+  projb: projectB/docker-compose.yml
+
+overrides:
+  projaphp:
+    ports:
+      - 80:80
+      - 80:82
+    links:
+      - projbpgsql:pgsql
+
+  projbphp:
+    ports:
+      - 81:80
+
+master_services:
+  php:
+    ports:
+      - 8001:8000000
+    links:
+      - projbpgsql:pgsql
+      - projamysql:mysql
+    volumes_from:
+      - projaphp
+
+ignores:
+  - projbpgsql
