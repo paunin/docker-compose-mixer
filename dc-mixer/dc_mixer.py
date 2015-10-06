@@ -6,13 +6,16 @@ from copy import deepcopy
 
 
 class DcMixer(object):
+    """
+    Main class for dc-mixer
+    """
     __MIXER_FILE = 'docker-compose-mixer.yml'
     """:type : string"""
 
     __EXIT_STATUS_INPUT_FILE_NOT_EXISTS = 2
     """:type : string"""
 
-    __work_path = '/'
+    __input_file = '/docker-compose-mixer.yml'
     """:type : string"""
 
     __output_file = '/docker-compose.yml'
@@ -24,14 +27,14 @@ class DcMixer(object):
     __scopes_container = None
     """:type : ScopesContainer"""
 
-    def __init__(self, work_path, output_file, scope_container, logger):
+    def __init__(self, input_file, output_file, scope_container, logger):
         """
-        :param work_path: string
-        :param output_file: string
+        :param input_file: string
         :param scope_container: ScopesContainer
         :param logger: IDcMixerLogger
         """
-        self.__work_path = work_path
+
+        self.__input_file = input_file
         self.__output_file = output_file
         self.__scopes_container = scope_container
         self.__logger = logger
@@ -40,10 +43,11 @@ class DcMixer(object):
         """
         :return: string
         """
-        return self.__work_path + '/' + self.__MIXER_FILE
+        return self.__input_file
 
     def process(self):
-        self.__logger.log('Start compiling docker-compose file in directory:' + self.__work_path)
+        self.__logger.log('Start compiling compose file...')
+        self.__logger.log('Input file: ' + self.__input_file + '; output file: ' + self.__output_file)
         input_file = self.get_input_file()
 
         if not os.path.isfile(self.get_input_file()):
@@ -62,8 +66,46 @@ class DcMixer(object):
             self.resolve_paths()
             self.resolve_ports()
             self.add_master_scope(mixer_config)
-            #self.apply_overrides(mixer_config)
+            self.apply_overrides(mixer_config)
             self.save_result_scope()
+
+    def flush(self):
+        """
+        Flush ScopesContainer
+        """
+        self.__scopes_container.flush()
+
+    @staticmethod
+    def is_path_relative(path):
+        """
+        Check if we can update path with prefix
+
+        :param path: string
+        :return: Bool
+        """
+        if os.path.isabs(path) or str(path).startswith('~'):
+            return False
+        else:
+            return True
+
+    def build_scopes(self, mixer_config):
+        """
+        Build scopes in scopes container
+
+        :param mixer_config: dict
+        """
+        if 'ignores' not in mixer_config:
+            mixer_config['ignores'] = []
+        self.__scopes_container.set_ignored_services(mixer_config['ignores'])
+
+        for (prefix, include_file) in mixer_config['includes'].iteritems():
+            if self.is_path_relative(include_file):
+                include_file = os.path.join(os.path.dirname(self.__input_file), include_file)
+
+            self.__logger.log('Creating scope for file: ' + include_file + ' and prefix: ' + prefix, 'debug')
+            scope = ServicesScope(prefix)
+            scope.extract_services_from_file(include_file)
+            self.__scopes_container.add_scope(prefix, scope)
 
     def resolve_services_names(self):
         """
@@ -76,8 +118,8 @@ class DcMixer(object):
         """
         Resolve paths to files and dirs
         """
-        self.__logger.log('Resolving services paths with work path ' + self.__work_path, 'debug')
-        self.__scopes_container.resolve_paths(self.__work_path)
+        self.__logger.log('Resolving services paths with', 'debug')
+        self.__scopes_container.resolve_paths(os.path.dirname(self.__output_file))
 
     def resolve_ports(self):
         """
@@ -86,6 +128,27 @@ class DcMixer(object):
         self.__logger.log('Resolving services ports', 'debug')
         redefined_ports = self.__scopes_container.resolve_ports()
         self.__logger.log('Redefined ports:\n\t' + str(redefined_ports), 'debug')
+
+    def add_master_scope(self, mixer_config):
+        """
+        Add master services from `master_services` section
+        """
+        if 'master_services' not in mixer_config:
+            return
+        scope = ServicesScope('')
+        scope.extract_services(mixer_config['master_services'])
+        self.__scopes_container.add_scope('', scope)
+
+    def apply_overrides(self, mixer_config):
+        """
+        Apply overrides from `overrides` section
+
+        :param mixer_config: dict
+        """
+        if 'overrides' not in mixer_config:
+            return
+
+        self.__scopes_container.apply_overrides(mixer_config['overrides'])
 
     def save_result_scope(self):
         """
@@ -99,45 +162,11 @@ class DcMixer(object):
             self.__logger.log('Save result scope in the file "' + self.__output_file + '"', 'debug')
             outfile.write(yaml.dump(scope, default_flow_style=False, indent=2))
 
-    def add_master_scope(self, mixer_config):
-        """
-        Add master services from `master_services` section
-        """
-        if 'master_services' not in mixer_config:
-            return
-        scope = ServicesScope('')
-        scope.extract_services(mixer_config['master_services'])
-        self.__scopes_container.add_scope('', scope)
-
-    def flush(self):
-        """
-        Flush ScopesContainer
-        """
-        self.__scopes_container.flush()
-
-    def build_scopes(self, mixer_config):
-        """
-        Build scopes in scopes container
-
-        :param mixer_config: dict
-        """
-        if 'ignores' not in mixer_config:
-            mixer_config['ignores'] = []
-        self.__scopes_container.set_ignored_services(mixer_config['ignores'])
-
-        for (prefix, include_file) in mixer_config['includes'].iteritems():
-            self.__logger.log('Creating scope for file: ' + include_file + ' and prefix: ' + prefix, 'debug')
-            scope = ServicesScope(prefix)
-            scope.extract_services_from_file(include_file)
-            self.__scopes_container.add_scope(prefix, scope)
-
-
-class ServiceExtractor(object):
-    def __init__(self, file_name):
-        self.__file = file_name
-
 
 class ScopesContainer(object):
+    """
+    High level container for scopes
+    """
     __scopes = {}
     """:type : dict[ServicesScope]"""
 
@@ -212,8 +241,20 @@ class ScopesContainer(object):
 
         return redefined_ports
 
+    def apply_overrides(self, overrides):
+        """
+        Apply overrides
+
+        :param overrides: dict
+        """
+        for (scope_name, scope) in self.__scopes.iteritems():
+            self.__scopes[scope_name].apply_overrides(overrides)
+
 
 class ServicesScope(object):
+    """
+    Class which defines services from one scope (file docker-compose.yml)
+    """
     __scope_name = None
     """:type : string"""
 
@@ -322,8 +363,21 @@ class ServicesScope(object):
                 redefined_ports[service_name] = service_redefined_ports
         return busy_ports, redefined_ports
 
+    def apply_overrides(self, overrides):
+        """
+        Override
+
+        :param overrides: dict
+        """
+        for (service_name, service) in self.__services.iteritems():
+            if service_name in overrides:
+                service.apply_overrides(overrides[service_name])
+
 
 class Service(object):
+    """
+    Class which defines service from docker compose
+    """
     __definition = None
     """:type : dict"""
 
@@ -421,26 +475,13 @@ class Service(object):
         """
         if 'extends' in self.__definition and self.__definition['extends'] and \
                 ('file' not in self.__definition['extends'] or not self.__definition['extends']['file']) and \
-                'service' in self.__definition['extends'] and self.__definition['extends']['service']:
+                        'service' in self.__definition['extends'] and self.__definition['extends']['service']:
             new_extends_service = name_map[self.__definition['extends']['service']]
             if new_extends_service in ignored_services:
                 del self.__definition['extends']
                 self.ignore()
             else:
                 self.__definition['extends']['service'] = new_extends_service
-
-    @staticmethod
-    def is_path_relative(path):
-        """
-        Check if we can update path with prefix
-
-        :param path: string
-        :return: Bool
-        """
-        if os.path.isabs(path) or str(path).startswith('~'):
-            return False
-        else:
-            return True
 
     def update_build_path(self, rel_path):
         """
@@ -449,7 +490,7 @@ class Service(object):
         if 'build' in self.__definition:
             if self.__definition['build']:
                 new_build = self.__definition['build']
-                if self.is_path_relative(new_build):
+                if DcMixer.is_path_relative(new_build):
                     new_build = os.path.join(rel_path, new_build)
 
                 self.__definition['build'] = new_build
@@ -466,7 +507,7 @@ class Service(object):
                 for (volume) in self.__definition['volumes']:
                     volume_parts = str(volume).split(':', 1)
 
-                    if self.is_path_relative(volume_parts[0]):
+                    if DcMixer.is_path_relative(volume_parts[0]):
                         volume_parts[0] = os.path.join(rel_path, volume_parts[0])
 
                     new_volumes.append(':'.join(volume_parts))
@@ -489,7 +530,7 @@ class Service(object):
                 new_env_files = []
                 for (env_file) in self.__definition['env_file']:
                     new_env_file = env_file
-                    if self.is_path_relative(new_env_file):
+                    if DcMixer.is_path_relative(new_env_file):
                         new_env_file = os.path.join(rel_path, new_env_file)
 
                     new_env_files.append(new_env_file)
@@ -502,10 +543,10 @@ class Service(object):
         """
         :param rel_path: string
         """
-        if 'extends' in self.__definition and self.__definition['extends'] and\
-                'file' in self.__definition['extends'] and self.__definition['extends']['file']:
+        if 'extends' in self.__definition and self.__definition['extends'] and \
+                        'file' in self.__definition['extends'] and self.__definition['extends']['file']:
             new_file = self.__definition['extends']['file']
-            if self.is_path_relative(new_file):
+            if DcMixer.is_path_relative(new_file):
                 self.__definition['extends']['file'] = os.path.join(rel_path, new_file)
 
     def update_ports(self, busy_ports=[]):
@@ -542,3 +583,12 @@ class Service(object):
             self.__definition['ports'] = new_ports
 
         return busy_ports, redefined_ports
+
+    def apply_overrides(self, overrides):
+        """
+        Override parts in service
+
+        :param overrides:
+        """
+        for (override_part, override_val) in overrides.iteritems():
+            self.__definition[override_part] = override_val

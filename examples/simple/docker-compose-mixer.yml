@@ -6,6 +6,7 @@ overrides:
   projaphp:
     ports:
       - 80:80
+      - 80:82
     links:
       - projbpgsql:pgsql
 
