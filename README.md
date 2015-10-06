@@ -4,7 +4,7 @@ Package which allow to run docker-compose with several docker-compose.yml files
 
 ## Installation (only for UNIX & MacOS)
 
-* Download file `sudo wget https://github.com/paunin/docker-compose-mixer/blob/develop/dist/dc-mixer?raw=true -O /usr/local/bin/dc-mixer`
+* Download file `sudo wget https://github.com/paunin/docker-compose-mixer/blob/master/dist/dc-mixer?raw=true -O /usr/local/bin/dc-mixer`
 * Make it executable `sudo chmod +x /usr/local/bin/dc-mixer`
 * Run it as console command `dc-mixer` from directory with `docker-compose-mixer.yml` file
 

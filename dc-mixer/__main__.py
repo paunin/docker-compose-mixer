@@ -1,9 +1,9 @@
 import os
 import sys
 import getopt
+import logging
 from dc_mixer import DcMixer
 from dc_mixer import ScopesContainer
-from dc_logger import DcMixerLogger
 
 
 def main(argv):
@@ -24,9 +24,6 @@ def main(argv):
             'For more information read documentation: https://github.com/paunin/docker-compose-mixer'
         )
 
-    verbose = False
-    """:type : bool"""
-
     input_file = None
     output_file = None
 
@@ -40,7 +37,7 @@ def main(argv):
             usage()
             sys.exit(0)
         if opt in ("-v", "--verbose"):
-            verbose = True
+            logging.basicConfig(level=logging.DEBUG)
         if opt in ("-i", "--input-file"):
             input_file = arg
         if opt in ("-o", "--output-file"):
@@ -52,7 +49,7 @@ def main(argv):
     if not output_file:
         output_file = os.getcwd() + '/docker-compose.yml'
 
-    mixer = DcMixer(input_file, output_file, ScopesContainer(), DcMixerLogger(verbose))
+    mixer = DcMixer(input_file, output_file, ScopesContainer())
     mixer.process()
 
 

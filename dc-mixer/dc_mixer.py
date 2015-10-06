@@ -1,5 +1,6 @@
 import yaml
 import os
+import logging
 from os.path import relpath
 from dc_exceptions import DcException
 from copy import deepcopy
@@ -21,23 +22,18 @@ class DcMixer(object):
     __output_file = '/docker-compose.yml'
     """:type : string"""
 
-    __logger = None
-    """:type : IDcMixerLogger"""
-
     __scopes_container = None
     """:type : ScopesContainer"""
 
-    def __init__(self, input_file, output_file, scope_container, logger):
+    def __init__(self, input_file, output_file, scope_container):
         """
         :param input_file: string
         :param scope_container: ScopesContainer
-        :param logger: IDcMixerLogger
         """
 
         self.__input_file = input_file
         self.__output_file = output_file
         self.__scopes_container = scope_container
-        self.__logger = logger
 
     def get_input_file(self):
         """
@@ -46,8 +42,8 @@ class DcMixer(object):
         return self.__input_file
 
     def process(self):
-        self.__logger.log('Start compiling compose file...')
-        self.__logger.log('Input file: ' + self.__input_file + '; output file: ' + self.__output_file)
+        logging.log(logging.DEBUG, 'Start compiling compose file...')
+        logging.log(logging.DEBUG, 'Input file: ' + self.__input_file + '; output file: ' + self.__output_file)
         input_file = self.get_input_file()
 
         if not os.path.isfile(self.get_input_file()):
@@ -55,10 +51,10 @@ class DcMixer(object):
 
         mixer_config = yaml.load(open(self.get_input_file(), 'r'))
 
-        self.__logger.log('Mixer config is below:\n\t' + str(mixer_config), 'debug')
+        logging.log(logging.DEBUG, 'Mixer config is below:\n\t' + str(mixer_config))
 
         if 'includes' not in mixer_config:
-            self.__logger.log('No includes found in' + self.__MIXER_FILE, 'warning')
+            logging.log(logging.WARNING, 'No includes found in' + self.__MIXER_FILE)
         else:
             self.flush()
             self.build_scopes(mixer_config)
@@ -102,7 +98,7 @@ class DcMixer(object):
             if self.is_path_relative(include_file):
                 include_file = os.path.join(os.path.dirname(self.__input_file), include_file)
 
-            self.__logger.log('Creating scope for file: ' + include_file + ' and prefix: ' + prefix, 'debug')
+            logging.log(logging.DEBUG, 'Creating scope for file: ' + include_file + ' and prefix: ' + prefix)
             scope = ServicesScope(prefix)
             scope.extract_services_from_file(include_file)
             self.__scopes_container.add_scope(prefix, scope)
@@ -111,23 +107,23 @@ class DcMixer(object):
         """
         Resolve services names in all scopes
         """
-        self.__logger.log('Resolving services names', 'debug')
+        logging.log(logging.DEBUG, 'Resolving services names')
         self.__scopes_container.resolve_names()
 
     def resolve_paths(self):
         """
         Resolve paths to files and dirs
         """
-        self.__logger.log('Resolving services paths with', 'debug')
+        logging.log(logging.DEBUG, 'Resolving services paths with')
         self.__scopes_container.resolve_paths(os.path.dirname(self.__output_file))
 
     def resolve_ports(self):
         """
         Resolve ports which we will bind to host machine
         """
-        self.__logger.log('Resolving services ports', 'debug')
+        logging.log(logging.DEBUG, 'Resolving services ports')
         redefined_ports = self.__scopes_container.resolve_ports()
-        self.__logger.log('Redefined ports:\n\t' + str(redefined_ports), 'debug')
+        logging.log(logging.DEBUG, 'Redefined ports:\n\t' + str(redefined_ports))
 
     def add_master_scope(self, mixer_config):
         """
@@ -157,9 +153,9 @@ class DcMixer(object):
         :return: bool
         """
         scope = self.__scopes_container.get_result_scope()
-        self.__logger.log('Result scope is:\n\t' + str(scope), 'debug')
+        logging.log(logging.DEBUG, 'Result scope is:\n\t' + str(scope))
         with open(self.__output_file, 'w') as outfile:
-            self.__logger.log('Save result scope in the file "' + self.__output_file + '"', 'debug')
+            logging.log(logging.DEBUG, 'Save result scope in the file "' + self.__output_file + '"')
             outfile.write(yaml.dump(scope, default_flow_style=False, indent=2))
 
 
