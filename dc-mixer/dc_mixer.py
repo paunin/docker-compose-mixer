@@ -568,10 +568,10 @@ class Service(object):
                 else:  # 8001
                     continue  # just the container port (a random host port will be chosen)
 
-                origin_port = port_parts[element_to_change]
+                origin_port = int(port_parts[element_to_change])
                 redefined_port = origin_port
                 while redefined_port in busy_ports:
-                    redefined_port = int(redefined_port) + 1
+                    redefined_port += 1
                 if origin_port != redefined_port:
                     redefined_ports[origin_port] = redefined_port
 
