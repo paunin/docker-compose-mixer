@@ -453,10 +453,13 @@ class Service(object):
             if self.__definition['links']:
                 for (link) in self.__definition['links']:
                     link_parts = str(link).split(':', 1)
-                    new_link_service = name_map[link_parts[0]]
+                    old_link_service=link_parts[0]
+                    new_link_service = name_map[old_link_service]
 
                     if new_link_service not in ignored_services:  # we don't need ignored services
                         link_parts[0] = new_link_service
+                        if len(link_parts) == 1:
+                            link_parts.append(old_link_service)
                         new_links.append(':'.join(link_parts))
 
                 self.__definition['links'] = new_links
