@@ -96,7 +96,7 @@ class DcMixer(object):
 
         for (prefix, include_file) in mixer_config['includes'].iteritems():
             if self.is_path_relative(include_file):
-                include_file = os.path.join(os.path.dirname(self.__input_file), include_file)
+                include_file = os.path.normpath(os.path.join(os.path.dirname(self.__input_file), include_file))
 
             logging.log(logging.DEBUG, 'Creating scope for file: ' + include_file + ' and prefix: ' + prefix)
             scope = ServicesScope(prefix)
@@ -490,7 +490,7 @@ class Service(object):
             if self.__definition['build']:
                 new_build = self.__definition['build']
                 if DcMixer.is_path_relative(new_build):
-                    new_build = os.path.join(rel_path, new_build)
+                    new_build = os.path.normpath(os.path.join(rel_path, new_build))
 
                 self.__definition['build'] = new_build
             else:
@@ -507,7 +507,10 @@ class Service(object):
                     volume_parts = str(volume).split(':', 1)
 
                     if DcMixer.is_path_relative(volume_parts[0]):
-                        volume_parts[0] = os.path.join(rel_path, volume_parts[0])
+                        host_path = os.path.normpath(os.path.join(rel_path, volume_parts[0]))
+                        if not str(volume_parts[0]).startswith('..'):
+                            host_path = os.path.join('.', host_path)
+                        volume_parts[0] = host_path
 
                     new_volumes.append(':'.join(volume_parts))
 
@@ -530,7 +533,7 @@ class Service(object):
                 for (env_file) in self.__definition['env_file']:
                     new_env_file = env_file
                     if DcMixer.is_path_relative(new_env_file):
-                        new_env_file = os.path.join(rel_path, new_env_file)
+                        new_env_file = os.path.normpath(os.path.join(rel_path, new_env_file))
 
                     new_env_files.append(new_env_file)
 
@@ -546,7 +549,7 @@ class Service(object):
                         'file' in self.__definition['extends'] and self.__definition['extends']['file']:
             new_file = self.__definition['extends']['file']
             if DcMixer.is_path_relative(new_file):
-                self.__definition['extends']['file'] = os.path.join(rel_path, new_file)
+                self.__definition['extends']['file'] = os.path.normpath(os.path.join(rel_path, new_file))
 
     def update_ports(self, busy_ports=[]):
         """
