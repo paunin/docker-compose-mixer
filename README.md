@@ -4,7 +4,7 @@ Package which allow to run docker-compose with several docker-compose.yml files
 
 ## Installation (only for UNIX & MacOS)
 
-* Download file `sudo wget https://github.com/paunin/docker-compose-mixer/blob/master/dist/dc-mixer?raw=true -O /usr/local/bin/dc-mixer`
+* Download bin file `sudo wget https://github.com/paunin/docker-compose-mixer/blob/master/dist/dc-mixer?raw=true -O /usr/local/bin/dc-mixer`
 * Make it executable `sudo chmod +x /usr/local/bin/dc-mixer`
 * Run it as console command `dc-mixer` from directory with `docker-compose-mixer.yml` file
 
@@ -147,7 +147,6 @@ master_services:
 #### NOTES:
 * Any services in `master_services` section will be in result file *without any changes*.
 * You have to use names of services with prefixes because of... @see case above ;)
-* Ports in  because
 
 ### Ignores
 
