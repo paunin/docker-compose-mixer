@@ -1,0 +1,149 @@
+pgsql:
+  expose:
+  - 5432
+  image: pgsql:latest
+  ports: 5432:5432
+projaapplication:
+  build: ../proj_a/images/java
+  cgroup_parent: m-executor-abcd
+  command: /start.sh
+  dns:
+  - 8.8.8.8
+  - 9.9.9.9
+  dockerfile: application.yml
+  env_file:
+  - ../proj_a/env_files/application.env
+  - ../proj_a/env_files/rabbit.env
+  environment:
+    DB_DRIVER: pgsql
+    DB_PORT: 5432
+  external_links:
+  - redis_1
+  - project_db_1:mysql
+  extra_hosts:
+  - somehost:162.242.195.82
+  hostname: application.host
+  labels:
+    com.example.department: Finance
+    com.example.description: Accounting webapp
+  links:
+  - projaredis:redis
+  - projarabbitmq:rabbitmq
+  - projamail:mail
+  - pgsql:db
+  ports:
+  - 81:80
+  - 1099:1098
+  volumes_from:
+  - projasources
+  working_dir: /var/application.host
+projamail:
+  build: ../proj_a/images/mail
+  domainname: application.host
+  expose:
+  - 25
+  - 143
+  hostname: mail
+  ports:
+  - '26:25'
+  - 144:143
+  volumes:
+  - ./../proj_a/images/mail/spamassassin:/tmp/spamassassin/
+  - ./../proj_a/images/mail/postfix:/tmp/postfix/
+  - ./../proj_a/images/mail/mail:/tmp/mail/
+projamysql:
+  build: ../proj_a/images/mysql
+  ports: []
+projarabbitmq:
+  build: ../proj_a/images/rabbitmq
+  command: /start.sh
+  env_file:
+  - ../proj_a/env_files/rabbit.env
+  ports:
+  - 15672:15672
+  volumes_from:
+  - projasources
+projaredis:
+  expose: null
+  extends:
+    file: ../redis.yml
+    service: redisbase
+  labels:
+  - com.example.description=Accounting webapp
+  - com.example.department=Finance
+  log_driver: syslog
+  log_opt:
+    syslog-address: tcp://192.168.0.42:123
+  net: bridge
+  ports:
+  - 6380:6379
+  - 127.0.0.1:6371:6370
+projasources:
+  build: ../proj_a/images/sources
+  volumes:
+  - ./../proj_a:/var/application.host
+projbapplication:
+  build: proj_b/images/java
+  cgroup_parent: m-executor-abcd
+  command: /start.sh
+  dns:
+  - 8.8.8.8
+  - 9.9.9.9
+  dockerfile: application.yml
+  env_file:
+  - proj_b/env_files/application.env
+  - proj_b/env_files/rabbit.env
+  environment:
+  - VARIABLE: value
+  external_links:
+  - redis_1
+  - project_db_1:mysql
+  extra_hosts:
+  - somehost:162.242.195.82
+  hostname: application.host
+  labels:
+    com.example.department: Finance
+    com.example.description: Accounting webapp
+  links:
+  - projaredis:redis
+  - projarabbitmq:rabbitmq
+  - projamail:mail
+  ports:
+  - 80:80
+  - 1098:1098
+  volumes_from:
+  - projbsources
+  working_dir: /var/application.host
+projbmail:
+  build: proj_b/images/mail
+  domainname: application.host
+  expose:
+  - 25
+  - 143
+  hostname: mail
+  ports:
+  - '25:25'
+  - 143:143
+  volumes:
+  - ./proj_b/images/mail/spamassassin:/tmp/spamassassin/
+  - ./proj_b/images/mail/postfix:/tmp/postfix/
+  - ./proj_b/images/mail/mail:/tmp/mail/
+projbredis:
+  expose: null
+  extends:
+    file: redis.yml
+    service: redisbase
+  labels:
+  - com.example.description=Accounting webapp
+  - com.example.department=Finance
+  log_driver: syslog
+  log_opt:
+    syslog-address: tcp://192.168.0.42:123
+  net: bridge
+  ports:
+  - 6379:6379
+  - 127.0.0.1:6370:6373
+projbsources:
+  build: proj_b/images/sources
+  volumes:
+  - ./proj_b:/var/application.host

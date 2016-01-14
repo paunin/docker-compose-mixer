@@ -1,0 +1,27 @@
+includes:
+  proja: ../proj_a/docker-compose.yml
+  projb: ./proj_b/docker-compose.yml
+ignores:
+  - projbrabbitmq
+overrides:
+  projbapplication:
+    links:
+      - projaredis:redis
+      - projarabbitmq:rabbitmq
+      - projamail:mail
+  projaapplication:
+    links:
+      - projaredis:redis
+      - projarabbitmq:rabbitmq
+      - projamail:mail
+      - pgsql:db
+    environment:
+      DB_DRIVER: pgsql
+      DB_PORT: 5432
+master_services:
+  pgsql:
+    image: pgsql:latest
+    expose: 
+      - 5432
+    ports:
+      5432:5432

@@ -1,0 +1,85 @@
+sources:
+  build: images/sources
+  volumes:
+    - .:/var/application.host
+
+application:
+  build: images/java
+  dockerfile: application.yml
+  dns:
+    - 8.8.8.8
+    - 9.9.9.9
+  hostname: application.host
+  working_dir: /var/application.host
+  cgroup_parent: m-executor-abcd
+  links:
+    - redis:redis
+    - rabbitmq
+    - mail
+    - mysql:db
+  volumes_from:
+    - sources
+  command: "/start.sh"
+  env_file:
+    - ./env_files/application.env
+    - ./env_files/rabbit.env
+  environment:
+    - DB_DRIVER: mysql
+    - DB_PORT: 3306
+  ports:
+    - "80:80"     #http
+    - "1098:1098" #jmx
+  external_links:
+    - redis_1
+    - project_db_1:mysql
+  extra_hosts:
+    - "somehost:162.242.195.82"
+  labels:
+    com.example.description: "Accounting webapp"
+    com.example.department: "Finance"
+
+redis:
+  labels:
+    - "com.example.description=Accounting webapp"
+    - "com.example.department=Finance"
+  extends:
+    file: ../redis.yml
+    service: redisbase
+  expose:
+  ports:
+    - "6379:6379"
+    - "127.0.0.1:6370:6370"
+  log_driver: "syslog"
+  log_opt:
+    syslog-address: "tcp://192.168.0.42:123"
+  net: "bridge"
+
+rabbitmq:
+  build: images/rabbitmq
+  ports:
+    - "15672:15672"
+  volumes_from:
+    - sources
+  command: /start.sh
+  env_file:
+    - ./env_files/rabbit.env
+
+mail:
+  build: images/mail
+  hostname: mail
+  domainname: application.host
+  expose:
+    - 25
+    - 143
+  ports:
+    - "25:25"
+    - "143:143"
+  volumes:
+    - ./images/mail/spamassassin:/tmp/spamassassin/
+    - ./images/mail/postfix:/tmp/postfix/
+    - ./images/mail/mail:/tmp/mail/
+
+mysql:
+  build: images/mysql
+  ports:
+    - 3602
